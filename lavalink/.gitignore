@@ -1,0 +1,4 @@
+*.jar
+application.yml
+logs/
+plugins/

@@ -1,0 +1,58 @@
+services:
+  bot:
+    container_name: doid
+    build: ./bot
+    restart: unless-stopped
+    stop_signal: SIGINT
+    env_file:
+      - .env
+    depends_on:
+      mongodb:
+        condition: service_started
+      lavalink:
+        condition: service_healthy
+    networks:
+      - lavalink
+      - mongodb
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4
+    container_name: lavalink
+    restart: unless-stopped
+    environment:
+      - _JAVA_OPTIONS=-Xmx6G
+      - SERVER_PORT=${LAVALINK_PORT}
+      - SERVER_ADDRESS
+      - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD}
+      - TZ
+    volumes:
+      - ./lavalink/application.yml:/opt/Lavalink/application.yml
+      - ./lavalink/plugins/:/opt/Lavalink/plugins/
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://127.0.0.1:${LAVALINK_PORT} || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - lavalink
+    expose:
+      - "${LAVALINK_PORT}"
+  mongodb:
+    image: mongodb/mongodb-community-server:8.2.4-ubuntu2204
+    restart: unless-stopped
+    environment:
+      - MONGODB_INITDB_ROOT_USERNAME=user
+      - MONGODB_INITDB_ROOT_PASSWORD=pass
+      - TZ
+    volumes:
+      - type: bind
+        source: ./data
+        target: /data/db
+    networks:
+      - mongodb
+networks:
+  lavalink:
+    name: lavalink
+  mongodb:
+    name: mongodb
+    driver: bridge
