@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import asyncio
 import logging
 from pathlib import Path
 
 import discord
+import lavalink
 from discord import app_commands
 from discord.ext import commands
 
@@ -56,25 +58,70 @@ class Bot(commands.Bot):
             name=settings.DATABASE_NAME,
         )
 
+        self.lavalink = None
+
         self.application_emojis: dict[str, str] = {}
 
     async def setup_hook(self):
+        self.lavalink = lavalink.Client(self.user.id)
+        self.lavalink.add_node(
+            settings.LAVALINK_HOST,
+            settings.LAVALINK_PORT,
+            settings.LAVALINK_PASSWORD,
+            settings.LAVALINK_REGION,
+            settings.LAVALINK_NAME,
+        )
+
         await self.fetch_emojis()
         await self.tree.set_translator(Translator(self))
+
         for extension in EXTENSIONS:
             try:
                 await self.load_extension(extension)
                 logger.info(f"[Cog] Successfully loaded: {extension}")
             except Exception:
                 logger.exception(f"[Cog] Failed to load: {extension}")
+
         await self.tree.sync()
 
     async def on_message(self, message: discord.Message):
         pass
 
     async def close(self):
+        tasks = [self.disconnect_voice(guild, force=True) for guild in self.guilds if guild.voice_client is not None]
+        if tasks:
+            await asyncio.gather(*tasks)
+
+        for extension in tuple(self.extensions):
+            try:
+                await self.unload_extension(extension)
+            except Exception:
+                logger.exception(f"[Cog] Failed to unload: {extension}")
+
+        try:
+            await self.lavalink.close()
+        except Exception:
+            logger.exception("[Lavalink] Failed to close lavalink client")
+
         await self.database.close()
         await super().close()
+
+    @staticmethod
+    async def disconnect_voice(guild: discord.Guild, force: bool = False):
+        if guild.voice_client is None:
+            return
+
+        voice = guild.me.voice
+        if voice and voice.channel:
+            try:
+                await voice.channel.edit(status=None)
+            except Exception:
+                pass
+
+        try:
+            await guild.voice_client.disconnect(force=force)
+        except Exception:
+            pass
 
     async def fetch_emojis(self):
         emojis = await self.fetch_application_emojis()

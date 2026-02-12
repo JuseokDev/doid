@@ -237,38 +237,23 @@ class Music(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot: Bot = bot
         self.database = self.bot.database
-        if not hasattr(self.bot, "lavalink"):
-            self.bot.lavalink = lavalink.Client(self.bot.user.id)
-            self.bot.lavalink.add_node(
-                settings.LAVALINK_HOST,
-                settings.LAVALINK_PORT,
-                settings.LAVALINK_PASSWORD,
-                settings.LAVALINK_REGION,
-                settings.LAVALINK_NAME,
-            )
         self.lavalink = self.bot.lavalink
         self.lavalink.add_event_hooks(self)
         self._dedicated_channels: dict[int, int] = {}
         self._disconnect_tasks: dict[int, asyncio.Task] = {}
         self._locks: dict[int, asyncio.Lock] = {}
-        self._loop = asyncio.get_event_loop()
 
     async def cog_load(self):
         self._dedicated_channels = await self.database.get_dedicated_channels()
 
     async def cog_unload(self):
-        lavalink = self.bot.lavalink
-        lavalink._event_hooks.clear()
+        for guild_id in self._disconnect_tasks.keys():
+            self.cancel_disconnect_task(guild_id)
+            guild = self.bot.get_guild(guild_id)
+            if guild and guild.voice_client:
+                await guild.voice_client.disconnect(force=True)
 
-        for guild_id, player in list(lavalink.players.items()):
-            await self.cleanup_player(guild_id, player)
-
-        try:
-            await lavalink.close()
-        except Exception:
-            logger.exception("[Lavalink] Failed to close lavalink client")
-        finally:
-            del self.bot.lavalink
+        self.lavalink._event_hooks.clear()
 
     async def cog_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
         if isinstance(error, app_commands.CheckFailure):
@@ -418,27 +403,9 @@ class Music(commands.Cog):
         except Exception:
             logger.exception("[VoiceChannelStatus] Failed to set voice channel status")
 
-    async def cleanup_player(self, guild_id: int, player: lavalink.DefaultPlayer):
-        player.queue.clear()
-
-        try:
-            await player.stop()
-        except Exception:
-            logger.error("[Player] Failed to stop player")
-
-        guild = self.bot.get_guild(guild_id)
-        if not (guild and guild.me.voice):
-            return
-
-        try:
-            await self.set_voice_channel_status(guild.me.voice.channel, None)
-            await guild.voice_client.disconnect(force=True)
-        except Exception:
-            logger.error("[VoiceClient] Failed to disconnect voice client")
-
     def create_disconnect_task(self, guild_id: int):
         dt = datetime.now() + timedelta(minutes=5)
-        task = self._loop.create_task(self._disconnect(dt, guild_id))
+        task = asyncio.create_task(self._disconnect(dt, guild_id))
         self._disconnect_tasks[guild_id] = task
 
     def cancel_disconnect_task(self, guild_id: int):
@@ -457,7 +424,7 @@ class Music(commands.Cog):
             return
 
         try:
-            await guild.voice_client.disconnect()
+            await guild.voice_client.disconnect(force=True)
         except Exception:
             logger.exception("[AutoDisconnect] Failed to disconnect voice client automatically")
 
