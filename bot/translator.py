@@ -18,33 +18,28 @@ DEFAULT_LOCALE = "ko-KR"
 logger = logging.getLogger("bot.translator")
 
 
-class Translator(app_commands.Translator):
-    def __init__(self, bot: Bot, *, locale_dir: str = "locales", default_locale: str = DEFAULT_LOCALE):
+class Translator:
+    def __init__(self, bot: Bot, *, default_locale: str = DEFAULT_LOCALE, locale_dir: str | Path = "locales"):
         self.bot: Bot = bot
+        self.default_locale = default_locale
         self.locale_dir = Path(locale_dir)
-        self.default_locale: str = default_locale
-        self.emojis: dict[str, str] = self.bot.application_emojis
         self.emoji_pattern = re.compile(r":(\w+):")
-        self._translations: dict[str, dict[str, str]] = {}
+        self.translations: dict[str, dict[str, str]] = {}
+        self.loaded_event = asyncio.Event()
 
     @property
-    def locales(self):
-        return list(self._translations.keys())
+    def emojis(self) -> dict[str, str]:
+        emojis = getattr(self.bot, "application_emojis", {})
+        return emojis
 
-    def _get(self, key: str, language_code: str) -> str | None:
-        if language_code not in self.locales:
-            return
-        return self._translations.get(language_code).get(key)
-
-    def _get_language_code(self, locale: discord.Locale) -> str:
-        language_code = locale.language_code
-        if language_code not in self.locales:
-            return self.default_locale
-        return language_code
+    @property
+    def locales(self) -> list[str]:
+        return list(self.translations.keys())
 
     async def load(self):
         if not self.locale_dir.is_dir():
-            logger.error(f"[Locale] Directory not found: {self.locale_dir}")
+            logger.error(f"[Locale] Locale directory not found: {self.locale_dir}")
+            self.loaded_event.set()
             return
 
         for path in self.locale_dir.glob("*.json"):
@@ -52,11 +47,29 @@ class Translator(app_commands.Translator):
             try:
                 with path.open(encoding="utf-8") as f:
                     data = json.load(f)
-                self._translations[lang] = data
+                self.translations[lang] = data
             except Exception:
                 logger.exception(f"[Locale] Failed to load translations for {lang}")
 
+        self.loaded_event.set()
         logger.info(f"[Locale] Successfully loaded {len(self.locales)} languages")
+
+    async def reload(self):
+        self.loaded_event.clear()
+        self.translations.clear()
+        await self.load()
+
+    def get(self, key: str, lang: str) -> str | None:
+        if lang not in self.translations:
+            return None
+
+        return self.translations.get(lang, {}).get(key)
+
+    def get_lang(self, code: str) -> str:
+        if code not in self.locales:
+            return self.default_locale
+
+        return code
 
     def repl(self, match: re.Match) -> str:
         name = match.group(1)
@@ -66,30 +79,48 @@ class Translator(app_commands.Translator):
     def replace_emojis(self, text: str) -> str:
         return self.emoji_pattern.sub(self.repl, text)
 
-    async def translate(
-        self,
-        string: app_commands.locale_str,
-        locale: discord.Locale,
-        context: app_commands.TranslationContext,
-    ) -> str | None:
-        extras = string.extras
-        key = extras.get("key")
-
+    async def translate(self, key: str, lang: str, **kwargs) -> str | None:
         if not key:
-            return string.message
+            logger.warning(f"[Translation] Key cannot be empty")
+            return None
 
-        lang = self._get_language_code(locale)
+        await self.loaded_event.wait()
 
-        translation = self._get(key, lang) or self._get(key, self.default_locale)
+        lang = self.get_lang(lang)
+
+        translation = self.get(key, lang) or self.get(key, self.default_locale)
         if translation is None:
-            logger.warning(f"[Translation] Missing translation key: {key}")
-            return string.message
+            logger.warning(f"[Translation] Missing translation for key: {key}")
+            return None
 
-        translation = await asyncio.to_thread(self.replace_emojis, translation)
+        translation = self.replace_emojis(translation)
 
         try:
-            translation = translation.format(**extras)
-        except KeyError:
-            logger.exception("[Translation] Failed to format: missing some key(s)")
+            translation = translation.format(**kwargs)
+        except KeyError as e:
+            logger.error(f"[Translation] Missing required argument: {e.args[0]}")
+
+        return translation
+
+
+class AppCommandTranslator(Translator, app_commands.Translator):
+    def __init__(self, bot: Bot, *, default_locale: str = DEFAULT_LOCALE, locale_dir: str | Path = "locales"):
+        super().__init__(bot, default_locale=default_locale, locale_dir=locale_dir)
+
+    async def load(self):
+        await super().load()
+
+    async def reload(self):
+        await super().reload()
+
+    async def translate(
+        self, string: app_commands.locale_str, locale: discord.Locale, context: app_commands.TranslationContext
+    ) -> str | None:
+        extras = dict(string.extras)
+        key = extras.pop("key") if "key" in extras else ""
+
+        translation = await super().translate(key, locale.language_code, **extras)
+        if translation is None:
+            return string.message
 
         return translation

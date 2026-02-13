@@ -11,7 +11,7 @@ from discord.ext import commands
 from database import Database
 from logger import Formatter, get_formatter
 from settings import settings
-from translator import Translator
+from translator import AppCommandTranslator
 
 # fmt: off
 EXTENSIONS = [
@@ -61,6 +61,7 @@ class Bot(commands.Bot):
         self.lavalink = None
 
         self.application_emojis: dict[str, str] = {}
+        self.translator = AppCommandTranslator(self)
 
     async def setup_hook(self):
         self.lavalink = lavalink.Client(self.user.id)
@@ -73,7 +74,7 @@ class Bot(commands.Bot):
         )
 
         await self.fetch_emojis()
-        await self.tree.set_translator(Translator(self))
+        await self.tree.set_translator(self.translator)
 
         for extension in EXTENSIONS:
             try:
@@ -122,6 +123,11 @@ class Bot(commands.Bot):
             await guild.voice_client.disconnect(force=force)
         except Exception:
             pass
+
+    async def reload(self):
+        await self.fetch_emojis()
+        await self.translator.reload()
+        await self.tree.sync()
 
     async def fetch_emojis(self):
         emojis = await self.fetch_application_emojis()
