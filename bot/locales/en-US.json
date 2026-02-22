@@ -17,6 +17,10 @@
     "command.stop.description": "",
     "command.volume": "",
     "command.volume.description": "",
+    "language.english": "",
+    "language.english.description": "",
+    "language.korean": "",
+    "language.korean.description": "",
     "message.channel.full": "",
     "message.channel.join_first": "",
     "message.channel.join_my_channel": "",
@@ -47,6 +51,7 @@
     "message.queue.item_canceled": "",
     "message.queue.playlist_added": "",
     "message.queue.track_added": "",
+    "message.settings.access_denied": "",
     "message.skip.no_permission": "",
     "message.volume.current_level": "",
     "option.channel": "",
@@ -58,5 +63,12 @@
     "option.search.query": "",
     "option.search.query.description": "",
     "permission.connect": "",
-    "permission.speak": ""
+    "permission.speak": "",
+    "settings.announcement_channel": "",
+    "settings.announcement_channel.description": "",
+    "settings.announcement_channel.placeholder": "",
+    "settings.default_language": "",
+    "settings.default_language.description": "",
+    "settings.default_language.placeholder": "",
+    "settings.general": ""
 }

@@ -17,6 +17,10 @@
     "command.stop.description": "재생을 멈추고 대기열을 삭제해요",
     "command.volume": "볼륨",
     "command.volume.description": "볼륨을 변경하거나 확인할 수 있어요",
+    "language.english": "영어",
+    "language.english.description": "English",
+    "language.korean": "한국어",
+    "language.korean.description": "Korean",
     "message.channel.full": "음성 채널의 정원이 다 차서 접속할 수 없어요",
     "message.channel.join_first": "음성 채널에 접속한 뒤에 다시 시도해 주세요",
     "message.channel.join_my_channel": "계속하려면 제가 접속 중인 음성 채널에 접속해 주세요",
@@ -47,6 +51,7 @@
     "message.queue.item_canceled": ":playlist_remove: 취소했어요",
     "message.queue.playlist_added": ":playlist_add_check: 플레이리스트 `{name}`이(가) 대기열에 추가되었어요",
     "message.queue.track_added": ":playlist_add_check: `{name}`(이)가 대기열에 추가되었어요",
+    "message.settings.access_denied": "권한이 없어요",
     "message.skip.no_permission": "스킵할 권한이 없어요",
     "message.volume.current_level": "{emoji} 현재 볼륨은 `{level}%`예요",
     "option.channel": "채널",
@@ -58,5 +63,12 @@
     "option.search.query": "검색어",
     "option.search.query.description": "검색어를 입력해 주세요",
     "permission.connect": "연결",
-    "permission.speak": "말하기"
+    "permission.speak": "말하기",
+    "settings.announcement_channel": ":rss_feed: 공지 채널",
+    "settings.announcement_channel.description": "봇의 업데이트 사항을 받을 채널을 변경할 수 있어요",
+    "settings.announcement_channel.placeholder": "공지 채널을 선택해 주세요",
+    "settings.default_language": ":language: 기본 언어",
+    "settings.default_language.description": "길드의 기본 언어를 변경할 수 있어요",
+    "settings.default_language.placeholder": "기본 언어를 선택해 주세요",
+    "settings.general": "## 일반 설정"
 }

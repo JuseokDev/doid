@@ -86,7 +86,7 @@ class QueryHistory(BaseDataclass):
 class GuildSettings(BaseDataclass):
     guild_id: int
     default_language: Literal["en-US", "ko-KR"] | None = None
-    default_channel: int | None = None
+    announcement_channel: int | None = None
     dedicated_channel: int | None = None
     default_volume: int = settings.DEFAULT_VOLUME
     maximum_volume: int | None = None
