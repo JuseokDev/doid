@@ -112,7 +112,7 @@ class AnnouncementChannelDropdown(BaseChannelDropdown):
             self.default_values = [discord.Object(announcement_channel)]
 
     async def callback(self, interaction: discord.Interaction):
-        channel_id = self.values[0] if self.values else None
+        channel_id = self.values[0].id if self.values else None
         await self.database.set_announcement_channel(self.guild_id, channel_id)
         await interaction.response.defer()
 
