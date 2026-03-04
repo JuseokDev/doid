@@ -22,6 +22,7 @@ class Track:
     author: str
     duration: int
     identifier: str
+    isrc: str | None
     source_name: str
     title: str
     track: str | None
@@ -33,6 +34,7 @@ class Track:
             author=track.author,
             duration=track.duration,
             identifier=track.identifier,
+            isrc=track.isrc,
             source_name=track.source_name,
             title=track.title,
             track=track.track,
